@@ -116,6 +116,11 @@ async function generateHtmlReport(analysisResult, meta) {
     </div>
   </section>
 
+  <section class="issue-section">
+    ${issueCardsHtml.join("\n")}
+    ${issues.length === 0 ? "<p>未识别到明显差异问题。</p>" : ""}
+  </section>
+
   <section class="overview-section">
     <h2>全局视图</h2>
     <div class="overview-grid">
@@ -124,11 +129,6 @@ async function generateHtmlReport(analysisResult, meta) {
       <div class="overview-item"><h3>差异热力图</h3><img src="${heatB64}" alt="差异热力图"></div>
       <div class="overview-item"><h3>重叠对比</h3><img src="${overlayB64}" alt="重叠对比"></div>
     </div>
-  </section>
-
-  <section class="issue-section">
-    ${issueCardsHtml.join("\n")}
-    ${issues.length === 0 ? "<p>未识别到明显差异问题。</p>" : ""}
   </section>
 
   <footer class="footer">

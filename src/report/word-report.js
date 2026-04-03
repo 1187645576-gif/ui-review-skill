@@ -51,6 +51,9 @@ async function generateWordReport(analysisResult, meta) {
   <li>问题总数：${issues.length}（高 ${highIssues.length} / 中 ${mediumIssues.length} / 低 ${lowIssues.length}）</li>
 </ul>
 
+<h2>问题详情</h2>
+${issues.length ? `<table><thead><tr><th>优先级</th><th>问题描述</th><th>截图对比</th></tr></thead><tbody>${rows.join("")}</tbody></table>` : "<p>未识别到明显差异问题。</p>"}
+
 <h2>全局视图</h2>
 <table><tr>
   <td><strong>设计稿</strong><br><img src="${designB64}" alt="设计稿"></td>
@@ -58,9 +61,6 @@ async function generateWordReport(analysisResult, meta) {
 </tr><tr>
   <td colspan="2"><strong>差异热力图</strong><br><img src="${heatB64}" alt="差异热力图"></td>
 </tr></table>
-
-<h2>问题详情</h2>
-${issues.length ? `<table><thead><tr><th>优先级</th><th>问题描述</th><th>截图对比</th></tr></thead><tbody>${rows.join("")}</tbody></table>` : "<p>未识别到明显差异问题。</p>"}
 
 <p style="margin-top:24px;font-size:12px;color:#9ca3af;">由 AI UI 走查助手 v2.0.0 自动生成 | ${escapeHtml(timestamp)}</p>
 </body></html>`;
