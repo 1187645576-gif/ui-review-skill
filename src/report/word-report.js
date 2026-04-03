@@ -4,10 +4,11 @@ const { ISSUE_TITLE_MAP } = require("../core/constants");
 
 const WORD_CSS = `
 body { font-family: "Microsoft YaHei","Segoe UI",sans-serif; padding: 24px; color: #10233f; }
-table { width: 100%; border-collapse: collapse; margin-top: 12px; }
+table { width: 100%; border-collapse: collapse; margin-top: 8px; margin-bottom: 16px; }
 th, td { border: 1px solid #cfd9e6; padding: 10px; vertical-align: top; }
 th { background: #eef5ff; text-align: left; }
 img { max-width: 260px; border-radius: 8px; border: 1px solid #dbe6f4; }
+img.thumb { max-width: 160px; }
 ul { margin: 0 0 16px 18px; }
 h1, h2, h3, p { margin: 0 0 12px; }
 span { font-size: 12px; color: #567; }
@@ -15,6 +16,7 @@ span { font-size: 12px; color: #567; }
 .badge-medium { color: #92400e; font-weight: bold; }
 .badge-low { color: #1e40af; font-weight: bold; }
 .page-tag { color: #6b7280; font-size: 12px; }
+.page-group-title { font-size: 14px; font-weight: bold; color: #374151; margin: 12px 0 4px; border-bottom: 1px dashed #cfd9e6; padding-bottom: 4px; }
 `;
 
 const TYPE_ORDER = ["color", "font", "spacing", "radius", "layout"];
@@ -37,31 +39,33 @@ async function generateWordReport(data, meta) {
     issuesByType[issue.type].push(issue);
   });
 
-  // 各类型问题表格
+  // 按类型 → 页面生成表格
   const typeTables = [];
   for (const type of TYPE_ORDER) {
     const typeIssues = issuesByType[type];
     if (!typeIssues.length) continue;
 
     const typeName = ISSUE_TITLE_MAP[type] || type;
-    const rows = [];
-    for (const issue of typeIssues) {
-      const designCropB64 = await toBase64DataUrl(issue.designCrop);
-      const devCropB64 = await toBase64DataUrl(issue.devCrop);
-      const badgeClass = `badge-${issue.severity}`;
-      const pageTag = isMultiPage ? `<br><span class="page-tag">来源：${escapeHtml(issue.pageName || "")}</span>` : "";
-      rows.push(`<tr>
-        <td><span class="${badgeClass}">${severityText(issue.severity)}</span></td>
-        <td><strong>${escapeHtml(issue.title)}</strong><br>${escapeHtml(issue.summary)}${pageTag}</td>
-        <td><img src="${designCropB64}" alt="设计稿"><br><img src="${devCropB64}" alt="开发稿"></td>
-      </tr>`);
-    }
+    typeTables.push(`<h2>${escapeHtml(typeName)}（${typeIssues.length} 个）</h2>`);
 
-    typeTables.push(`<h2>${escapeHtml(typeName)}（${typeIssues.length} 个）</h2>
-    <table><thead><tr><th>优先级</th><th>问题描述</th><th>截图对比</th></tr></thead><tbody>${rows.join("")}</tbody></table>`);
+    if (isMultiPage) {
+      const byPage = {};
+      typeIssues.forEach((issue) => {
+        const pg = issue.pageName || "未命名";
+        if (!byPage[pg]) byPage[pg] = [];
+        byPage[pg].push(issue);
+      });
+
+      for (const [pageName, pageIssues] of Object.entries(byPage)) {
+        typeTables.push(`<p class="page-group-title">${escapeHtml(pageName)}（${pageIssues.length} 个）</p>`);
+        typeTables.push(await buildIssueTable(pageIssues));
+      }
+    } else {
+      typeTables.push(await buildIssueTable(typeIssues));
+    }
   }
 
-  // 全局视图
+  // 全局视图（缩略图）
   const pageViews = [];
   for (const page of pages) {
     const dB64 = await toBase64DataUrl(page.designImage);
@@ -70,10 +74,9 @@ async function generateWordReport(data, meta) {
     const pageTitle = isMultiPage ? page.pageName || "页面" : "全局视图";
     pageViews.push(`<h3>${escapeHtml(pageTitle)}</h3>
     <table><tr>
-      <td><strong>设计稿</strong><br><img src="${dB64}" alt="设计稿"></td>
-      <td><strong>开发稿</strong><br><img src="${vB64}" alt="开发稿"></td>
-    </tr><tr>
-      <td colspan="2"><strong>差异热力图</strong><br><img src="${hB64}" alt="热力图"></td>
+      <td><strong>设计稿</strong><br><img class="thumb" src="${dB64}" alt="设计稿"></td>
+      <td><strong>开发稿</strong><br><img class="thumb" src="${vB64}" alt="开发稿"></td>
+      <td><strong>热力图</strong><br><img class="thumb" src="${hB64}" alt="热力图"></td>
     </tr></table>`);
   }
 
@@ -95,10 +98,25 @@ ${typeTables.length ? typeTables.join("\n") : "<p>未识别到明显差异问题
 <h2>各页面全局视图</h2>
 ${pageViews.join("\n")}
 
-<p style="margin-top:24px;font-size:12px;color:#9ca3af;">由 AI UI 走查助手 v2.1.0 自动生成 | ${escapeHtml(timestamp)}</p>
+<p style="margin-top:24px;font-size:12px;color:#9ca3af;">由 AI UI 走查助手 v2.2.0 自动生成 | ${escapeHtml(timestamp)}</p>
 </body></html>`;
 
   return Buffer.from(html, "utf-8");
+}
+
+async function buildIssueTable(issues) {
+  const rows = [];
+  for (const issue of issues) {
+    const designCropB64 = await toBase64DataUrl(issue.designCrop);
+    const devCropB64 = await toBase64DataUrl(issue.devCrop);
+    const badgeClass = `badge-${issue.severity}`;
+    rows.push(`<tr>
+      <td><span class="${badgeClass}">${severityText(issue.severity)}</span></td>
+      <td><strong>${escapeHtml(issue.title)}</strong><br>${escapeHtml(issue.summary)}</td>
+      <td><img src="${designCropB64}" alt="设计稿"><br><img src="${devCropB64}" alt="开发稿"></td>
+    </tr>`);
+  }
+  return `<table><thead><tr><th>优先级</th><th>问题描述</th><th>截图对比</th></tr></thead><tbody>${rows.join("")}</tbody></table>`;
 }
 
 module.exports = { generateWordReport };
