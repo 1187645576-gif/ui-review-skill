@@ -1,0 +1,98 @@
+{
+  "schema_version": "v1",
+  "name_for_human": "AI UI 走查助手",
+  "name_for_model": "ui_review",
+  "description_for_human": "智能对比设计稿与开发截图，像素级检测圆角、字号、间距、颜色、布局差异，生成 HTML/Word 走查报告",
+  "description_for_model": "对比两张图片（设计稿和开发截图），通过像素级差异分析检测圆角、字号、间距、颜色、布局等 5 类 UI 差异，按高/中/低优先级分类，返回结构化走查报告。调用时需上传 design（设计稿图片）和 dev（开发截图）两个文件。",
+  "auth": { "type": "none" },
+  "api": {
+    "type": "openapi",
+    "url": "https://<your-domain>/openapi.json"
+  },
+  "openapi": {
+    "openapi": "3.0.0",
+    "info": {
+      "title": "UI Review API",
+      "version": "2.0.0",
+      "description": "AI UI 走查服务 API - 像素级设计还原对比"
+    },
+    "servers": [{ "url": "https://<your-domain>" }],
+    "paths": {
+      "/api/review": {
+        "post": {
+          "operationId": "reviewUI",
+          "summary": "对比设计稿与开发截图",
+          "requestBody": {
+            "required": true,
+            "content": {
+              "multipart/form-data": {
+                "schema": {
+                  "type": "object",
+                  "required": ["design", "dev"],
+                  "properties": {
+                    "design": { "type": "string", "format": "binary", "description": "设计稿图片（PNG/JPG）" },
+                    "dev": { "type": "string", "format": "binary", "description": "开发截图（PNG/JPG）" },
+                    "threshold": { "type": "number", "default": 0.23, "description": "检测灵敏度（0-1），越低越敏感" },
+                    "minRegionCells": { "type": "integer", "default": 10, "description": "最小问题区域格数" },
+                    "pageName": { "type": "string", "description": "报告页面名称" },
+                    "version": { "type": "string", "description": "版本号" },
+                    "reviewer": { "type": "string", "description": "走查人员" },
+                    "notes": { "type": "string", "description": "备注" }
+                  }
+                }
+              }
+            }
+          },
+          "responses": {
+            "200": {
+              "description": "走查结果",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "type": "object",
+                    "properties": {
+                      "success": { "type": "boolean" },
+                      "summary": {
+                        "type": "object",
+                        "properties": {
+                          "totalIssues": { "type": "integer" },
+                          "highCount": { "type": "integer" },
+                          "mediumCount": { "type": "integer" },
+                          "lowCount": { "type": "integer" }
+                        }
+                      },
+                      "issues": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "id": { "type": "string" },
+                            "type": { "type": "string", "enum": ["font", "radius", "spacing", "color", "layout"] },
+                            "severity": { "type": "string", "enum": ["high", "medium", "low"] },
+                            "title": { "type": "string" },
+                            "summary": { "type": "string" },
+                            "bbox": { "type": "object" },
+                            "score": { "type": "number" }
+                          }
+                        }
+                      },
+                      "reportHtmlBase64": { "type": "string", "description": "HTML 走查报告 base64" },
+                      "reportWordBase64": { "type": "string", "description": "Word 走查报告 base64" }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "/api/health": {
+        "get": {
+          "operationId": "healthCheck",
+          "summary": "健康检查",
+          "responses": { "200": { "description": "服务正常" } }
+        }
+      }
+    }
+  }
+}

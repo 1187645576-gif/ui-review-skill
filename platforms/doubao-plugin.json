@@ -1,0 +1,46 @@
+{
+  "name": "ui_review",
+  "display_name": "AI UI 走查助手",
+  "description": "像素级对比设计稿与开发截图，检测圆角、字号、间距、颜色、布局等 UI 差异，生成 HTML/Word 走查报告",
+  "version": "2.0.0",
+  "type": "api",
+  "auth": { "type": "none" },
+  "api": {
+    "base_url": "https://<your-domain>",
+    "endpoints": [
+      {
+        "name": "review_ui",
+        "method": "POST",
+        "path": "/api/review",
+        "description": "对比设计稿和开发截图，返回差异分析结果和走查报告",
+        "parameters": [
+          { "name": "design", "type": "file", "required": true, "description": "设计稿图片" },
+          { "name": "dev", "type": "file", "required": true, "description": "开发截图" },
+          { "name": "threshold", "type": "number", "required": false, "default": 0.23, "description": "检测灵敏度" },
+          { "name": "minRegionCells", "type": "integer", "required": false, "default": 10, "description": "最小问题区域格数" },
+          { "name": "pageName", "type": "string", "required": false, "description": "报告页面名称" },
+          { "name": "version", "type": "string", "required": false, "description": "版本号" },
+          { "name": "reviewer", "type": "string", "required": false, "description": "走查人员" },
+          { "name": "notes", "type": "string", "required": false, "description": "备注" }
+        ],
+        "response": {
+          "type": "json",
+          "fields": [
+            { "name": "success", "type": "boolean" },
+            { "name": "summary", "type": "object", "description": "走查总结（总数、高/中/低）" },
+            { "name": "issues", "type": "array", "description": "问题列表" },
+            { "name": "reportHtmlBase64", "type": "string", "description": "HTML 报告 base64" },
+            { "name": "reportWordBase64", "type": "string", "description": "Word 报告 base64" }
+          ]
+        }
+      },
+      {
+        "name": "health_check",
+        "method": "GET",
+        "path": "/api/health",
+        "description": "服务健康检查"
+      }
+    ]
+  },
+  "triggers": ["UI 走查", "设计还原对比", "设计稿和开发稿对比", "走查报告"]
+}

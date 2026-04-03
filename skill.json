@@ -1,0 +1,69 @@
+{
+  "name": "ui-review",
+  "displayName": "AI UI 走查助手",
+  "version": "2.0.0",
+  "description": "像素级对比设计稿与开发实现，检测圆角、字号、间距、颜色、布局差异，自动生成包含热力图和问题截图的 HTML + Word 走查报告。",
+  "license": "MIT",
+  "keywords": ["ui", "design", "review", "qa", "pixel-diff", "走查", "设计还原"],
+
+  "capabilities": {
+    "pixel_comparison": {
+      "engine": "rgb-luminance-weighted-diff",
+      "grid_size": 8,
+      "smoothing": "3x3-neighbor-average"
+    },
+    "issue_detection": {
+      "method": "bfs-connected-components",
+      "types": ["font", "radius", "spacing", "color", "layout"],
+      "severity_levels": ["high", "medium", "low"]
+    },
+    "visualization": ["heat_map", "overlay", "issue_crop_highlight"],
+    "report_formats": ["html", "word"]
+  },
+
+  "input": {
+    "design": { "type": "image", "required": true, "description": "设计稿图片（PNG/JPG）" },
+    "dev": { "type": "image", "required": true, "description": "开发截图（PNG/JPG）" },
+    "threshold": { "type": "number", "default": 0.23, "description": "检测灵敏度（0-1）" },
+    "minRegionCells": { "type": "integer", "default": 10, "description": "最小问题区域格数" }
+  },
+
+  "output": {
+    "html": { "type": "file", "mime": "text/html", "description": "自包含 HTML 走查报告" },
+    "word": { "type": "file", "mime": "application/msword", "description": "Word 走查报告" },
+    "summary": { "type": "json", "description": "走查结果摘要 JSON" }
+  },
+
+  "platforms": {
+    "claude-code": {
+      "type": "command",
+      "command": "/ui-review",
+      "file": "platforms/claude-code.md",
+      "runtime": "node src/index.js --design $DESIGN --dev $DEV --output $OUTPUT"
+    },
+    "coze": {
+      "type": "api-plugin",
+      "manifest": "platforms/coze-plugin.json",
+      "endpoint": "POST /api/review",
+      "deploy": "node src/index.js serve --port 3001"
+    },
+    "doubao": {
+      "type": "api-plugin",
+      "manifest": "platforms/doubao-plugin.json",
+      "endpoint": "POST /api/review",
+      "deploy": "node src/index.js serve --port 3001"
+    },
+    "cursor": {
+      "type": "rules",
+      "file": "platforms/cursor.mdc"
+    },
+    "github-copilot": {
+      "type": "instructions",
+      "file": "platforms/copilot.md"
+    },
+    "claude-ai": {
+      "type": "project-instruction",
+      "file": "platforms/universal.md"
+    }
+  }
+}
