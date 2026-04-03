@@ -7,6 +7,7 @@ const { buildIssues } = require("./core/issue-detector");
 const { buildHeatMap } = require("./core/heat-map");
 const { buildOverlay } = require("./core/overlay");
 const { buildIssueAssets } = require("./core/issue-assets");
+const { autoMatchPairs } = require("./core/matcher");
 const { generateHtmlReport } = require("./report/html-report");
 const { generateWordReport } = require("./report/word-report");
 const {
@@ -213,16 +214,36 @@ async function runCli(argv) {
       process.exit(1);
     }
 
-    const pairs = [];
-    for (let i = 0; i < Math.min(designFiles.length, devFiles.length); i += 1) {
-      pairs.push({
-        name: path.basename(designFiles[i], path.extname(designFiles[i])),
-        designPath: path.join(path.resolve(args.designDir), designFiles[i]),
-        devPath: path.join(path.resolve(args.devDir), devFiles[i]),
-      });
+    console.log(`设计稿 ${designFiles.length} 张，开发稿 ${devFiles.length} 张，正在智能匹配...\n`);
+
+    // 加载所有图片并提取特征
+    const Jimp = require("jimp");
+    const designImages = [];
+    for (const f of designFiles) {
+      const p = path.join(path.resolve(args.designDir), f);
+      const image = await Jimp.read(p);
+      designImages.push({ name: path.basename(f, path.extname(f)), path: p, image });
+    }
+    const devImages = [];
+    for (const f of devFiles) {
+      const p = path.join(path.resolve(args.devDir), f);
+      const image = await Jimp.read(p);
+      devImages.push({ name: path.basename(f, path.extname(f)), path: p, image });
     }
 
-    console.log(`找到 ${pairs.length} 组图片，开始批量走查...\n`);
+    // 自动匹配
+    const pairs = await autoMatchPairs(designImages, devImages);
+
+    if (!pairs.length) {
+      console.log("未能匹配到任何图片对。");
+      process.exit(1);
+    }
+
+    console.log("匹配结果：");
+    pairs.forEach((pair, i) => {
+      console.log(`  ${i + 1}. ${pair.name} ←→ ${pair.devName}（相似度 ${Math.round(pair.matchScore * 100)}%）`);
+    });
+    console.log("");
     const result = await runBatchReview({
       pairs,
       threshold: args.threshold,
