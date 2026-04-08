@@ -47,6 +47,8 @@ body { font-family: "Microsoft YaHei","Segoe UI",sans-serif; padding: 32px; colo
 .comparison-row img { max-width: 280px; border-radius: 6px; border: 1px solid #e5e7eb; }
 .delete-btn { position: absolute; top: 12px; right: 12px; width: 28px; height: 28px; border-radius: 50%; border: 1px solid #e5e7eb; background: #fff; color: #9ca3af; font-size: 16px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all .15s; }
 .delete-btn:hover { background: #fee2e2; color: #b91c1c; border-color: #fca5a5; }
+.edit-btn { position: absolute; top: 12px; right: 48px; width: 28px; height: 28px; border-radius: 50%; border: 1px solid #e5e7eb; background: #fff; color: #9ca3af; font-size: 14px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all .15s; }
+.edit-btn:hover { background: #dbeafe; color: #1e40af; border-color: #93c5fd; }
 .restore-btn { position: absolute; top: 12px; right: 12px; padding: 2px 10px; border-radius: 999px; border: 1px solid #d1d5db; background: #fff; color: #6b7280; font-size: 12px; cursor: pointer; }
 .restore-btn:hover { background: #f0fdf4; color: #16a34a; border-color: #86efac; }
 
@@ -66,17 +68,26 @@ body { font-family: "Microsoft YaHei","Segoe UI",sans-serif; padding: 32px; colo
 .add-dialog label { display: block; font-size: 13px; color: #6b7280; margin-bottom: 4px; margin-top: 12px; }
 .add-dialog select, .add-dialog input, .add-dialog textarea { width: 100%; padding: 8px 12px; border: 1px solid #d1d5db; border-radius: 8px; font-size: 14px; }
 .add-dialog textarea { resize: vertical; min-height: 60px; }
+.img-upload-zone { margin-top: 8px; border: 2px dashed #d1d5db; border-radius: 10px; padding: 16px; text-align: center; cursor: pointer; color: #9ca3af; font-size: 13px; transition: all .15s; }
+.img-upload-zone:hover { border-color: #93c5fd; color: #3b82f6; }
+.img-upload-zone.has-img { border-style: solid; border-color: #86efac; }
+.img-preview-row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
+.img-preview-item { position: relative; }
+.img-preview-item img { width: 100px; height: 75px; object-fit: cover; border-radius: 6px; border: 1px solid #e5e7eb; }
+.img-preview-item .img-remove { position: absolute; top: -6px; right: -6px; width: 20px; height: 20px; border-radius: 50%; background: #ef4444; color: #fff; border: none; font-size: 12px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+.user-img { max-width: 260px; border-radius: 6px; border: 1px solid #e5e7eb; margin-top: 8px; }
 .add-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 20px; }
 .add-actions button { padding: 8px 20px; border-radius: 8px; border: none; font-size: 14px; cursor: pointer; }
 .btn-cancel { background: #f3f4f6; color: #374151; }
 .btn-confirm { background: #1a1a2e; color: #fff; }
 
-@media print { .toolbar, .delete-btn, .restore-btn, .add-btn { display: none !important; } body { padding: 16px; } .page-overview { break-inside: avoid; } .issue-card { break-inside: avoid; } .issue-card.deleted { display: none !important; } }
+@media print { .toolbar, .delete-btn, .restore-btn, .add-btn, .edit-btn { display: none !important; } body { padding: 16px; } .page-overview { break-inside: avoid; } .issue-card { break-inside: avoid; } .issue-card.deleted { display: none !important; } }
 `;
 
 const REPORT_JS = `
 document.addEventListener('DOMContentLoaded', function() {
   var activeFilters = { severity: 'all', type: 'all' };
+  var pendingImages = [];
 
   // 筛选
   document.querySelectorAll('.filter-btn').forEach(function(btn) {
@@ -97,7 +108,6 @@ document.addEventListener('DOMContentLoaded', function() {
       if (activeFilters.type !== 'all' && card.dataset.type !== activeFilters.type) show = false;
       card.style.display = show ? '' : 'none';
     });
-    // 隐藏空的 page-group 和 type-section
     document.querySelectorAll('.page-group').forEach(function(pg) {
       var visible = pg.querySelectorAll('.issue-card:not([style*="display: none"]):not(.deleted)');
       pg.style.display = visible.length ? '' : 'none';
@@ -109,64 +119,166 @@ document.addEventListener('DOMContentLoaded', function() {
     updateCounts();
   }
 
-  // 删除/恢复
+  // 删除/恢复/编辑
   document.addEventListener('click', function(e) {
     if (e.target.classList.contains('delete-btn')) {
       var card = e.target.closest('.issue-card');
       card.classList.add('deleted');
       e.target.style.display = 'none';
-      var rb = card.querySelector('.restore-btn');
-      if (rb) rb.style.display = '';
+      var eb = card.querySelector('.edit-btn'); if (eb) eb.style.display = 'none';
+      var rb = card.querySelector('.restore-btn'); if (rb) rb.style.display = '';
       updateCounts();
     }
     if (e.target.classList.contains('restore-btn')) {
       var card = e.target.closest('.issue-card');
       card.classList.remove('deleted');
       e.target.style.display = 'none';
-      var db = card.querySelector('.delete-btn');
-      if (db) db.style.display = '';
+      var db = card.querySelector('.delete-btn'); if (db) db.style.display = '';
+      var eb = card.querySelector('.edit-btn'); if (eb) eb.style.display = '';
       updateCounts();
+    }
+    if (e.target.classList.contains('edit-btn')) {
+      openEditModal(e.target.closest('.issue-card'));
+    }
+    if (e.target.classList.contains('img-remove')) {
+      e.target.closest('.img-preview-item').remove();
     }
   });
 
+  // 编辑弹窗
+  var editModal = document.getElementById('editModal');
+  var editingCard = null;
+
+  function openEditModal(card) {
+    editingCard = card;
+    var titleEl = card.querySelector('.issue-title');
+    var summaryEl = card.querySelector('.issue-summary');
+    document.getElementById('editTitle').value = titleEl ? titleEl.textContent : '';
+    document.getElementById('editDesc').value = summaryEl ? summaryEl.textContent : '';
+    document.getElementById('editSeverity').value = card.dataset.severity || 'medium';
+    editModal.classList.add('show');
+  }
+
+  document.getElementById('editCancel').addEventListener('click', function() { editModal.classList.remove('show'); });
+  editModal.addEventListener('click', function(e) { if (e.target === editModal) editModal.classList.remove('show'); });
+
+  document.getElementById('editConfirm').addEventListener('click', function() {
+    if (!editingCard) return;
+    var title = document.getElementById('editTitle').value.trim();
+    var desc = document.getElementById('editDesc').value.trim();
+    var severity = document.getElementById('editSeverity').value;
+
+    var titleEl = editingCard.querySelector('.issue-title');
+    var summaryEl = editingCard.querySelector('.issue-summary');
+    if (titleEl && title) titleEl.textContent = title;
+    if (summaryEl) summaryEl.textContent = desc;
+
+    // 更新优先级
+    var oldSeverity = editingCard.dataset.severity;
+    if (severity !== oldSeverity) {
+      editingCard.dataset.severity = severity;
+      editingCard.classList.remove('card-high','card-medium','card-low');
+      editingCard.classList.add('card-' + severity);
+      var badge = editingCard.querySelector('.badge');
+      if (badge) {
+        badge.className = 'badge severity-' + severity;
+        var labels = { high: '\\uD83D\\uDD34 \\u9AD8', medium: '\\uD83D\\uDFE1 \\u4E2D', low: '\\uD83D\\uDFE2 \\u4F4E' };
+        badge.textContent = labels[severity] || severity;
+      }
+    }
+
+    editModal.classList.remove('show');
+    updateCounts();
+  });
+
   // 新增问题
-  var modal = document.getElementById('addModal');
-  document.getElementById('addIssueBtn').addEventListener('click', function() { modal.classList.add('show'); });
-  document.getElementById('addCancel').addEventListener('click', function() { modal.classList.remove('show'); });
-  modal.addEventListener('click', function(e) { if (e.target === modal) modal.classList.remove('show'); });
+  var addModal = document.getElementById('addModal');
+  document.getElementById('addIssueBtn').addEventListener('click', function() {
+    pendingImages = [];
+    document.getElementById('imgPreview').innerHTML = '';
+    addModal.classList.add('show');
+  });
+  document.getElementById('addCancel').addEventListener('click', function() { addModal.classList.remove('show'); });
+  addModal.addEventListener('click', function(e) { if (e.target === addModal) addModal.classList.remove('show'); });
+
+  // 图片上传
+  var imgZone = document.getElementById('imgUploadZone');
+  var imgInput = document.getElementById('imgFileInput');
+  imgZone.addEventListener('click', function() { imgInput.click(); });
+  imgZone.addEventListener('dragover', function(e) { e.preventDefault(); imgZone.style.borderColor = '#3b82f6'; });
+  imgZone.addEventListener('dragleave', function() { imgZone.style.borderColor = ''; });
+  imgZone.addEventListener('drop', function(e) {
+    e.preventDefault(); imgZone.style.borderColor = '';
+    handleFiles(e.dataTransfer.files);
+  });
+  imgInput.addEventListener('change', function() { handleFiles(imgInput.files); imgInput.value = ''; });
+
+  function handleFiles(files) {
+    Array.from(files).forEach(function(file) {
+      if (!file.type.startsWith('image/')) return;
+      var reader = new FileReader();
+      reader.onload = function(ev) {
+        pendingImages.push(ev.target.result);
+        renderImgPreview();
+      };
+      reader.readAsDataURL(file);
+    });
+  }
+
+  function renderImgPreview() {
+    var container = document.getElementById('imgPreview');
+    container.innerHTML = '';
+    pendingImages.forEach(function(src, i) {
+      var item = document.createElement('div');
+      item.className = 'img-preview-item';
+      item.innerHTML = '<img src="' + src + '"><button class="img-remove" data-idx="' + i + '">\\u00D7</button>';
+      item.querySelector('.img-remove').addEventListener('click', function() {
+        pendingImages.splice(i, 1);
+        renderImgPreview();
+      });
+      container.appendChild(item);
+    });
+    imgZone.classList.toggle('has-img', pendingImages.length > 0);
+  }
 
   document.getElementById('addConfirm').addEventListener('click', function() {
     var type = document.getElementById('addType').value;
     var severity = document.getElementById('addSeverity').value;
     var title = document.getElementById('addTitle').value.trim();
     var desc = document.getElementById('addDesc').value.trim();
-    if (!title) { alert('请填写问题标题'); return; }
+    if (!title) { alert('\\u8BF7\\u586B\\u5199\\u95EE\\u9898\\u6807\\u9898'); return; }
 
-    var severityLabel = { high: '\\uD83D\\uDD34 高', medium: '\\uD83D\\uDFE1 中', low: '\\uD83D\\uDFE2 低' };
+    var severityLabel = { high: '\\uD83D\\uDD34 \\u9AD8', medium: '\\uD83D\\uDFE1 \\u4E2D', low: '\\uD83D\\uDFE2 \\u4F4E' };
+    var imgHtml = '';
+    pendingImages.forEach(function(src) {
+      imgHtml += '<img class="user-img" src="' + src + '">';
+    });
+
     var card = document.createElement('div');
     card.className = 'issue-card card-' + severity + ' manual-issue';
     card.dataset.severity = severity;
     card.dataset.type = type;
-    card.innerHTML = '<button class="delete-btn" title="删除">×</button><button class="restore-btn" style="display:none">恢复</button>' +
+    card.innerHTML = '<button class="edit-btn" title="\\u7F16\\u8F91">\\u270E</button><button class="delete-btn" title="\\u5220\\u9664">\\u00D7</button><button class="restore-btn" style="display:none">\\u6062\\u590D</button>' +
       '<div class="issue-header"><span class="badge severity-' + severity + '">' + (severityLabel[severity]||severity) + '</span>' +
-      '<strong class="issue-title">' + escapeH(title) + '</strong><span class="badge" style="background:#f0fdf4;color:#16a34a;">手动添加</span></div>' +
-      '<p class="issue-summary">' + escapeH(desc) + '</p>';
+      '<strong class="issue-title">' + escapeH(title) + '</strong><span class="badge" style="background:#f0fdf4;color:#16a34a;">\\u624B\\u52A8\\u6DFB\\u52A0</span></div>' +
+      '<p class="issue-summary">' + escapeH(desc) + '</p>' +
+      (imgHtml ? '<div class="comparison-row">' + imgHtml + '</div>' : '');
 
-    // 插入到对应类型 section
     var section = document.querySelector('.type-section[data-type="' + type + '"]');
     if (section) {
       var lastGroup = section.querySelector('.page-group:last-of-type') || section;
       lastGroup.appendChild(card);
     } else {
-      // 没有该类型 section，插到问题区域末尾
       var allSections = document.querySelectorAll('.type-section');
       var last = allSections[allSections.length - 1];
       if (last) last.parentNode.insertBefore(card, last.nextSibling);
     }
 
-    modal.classList.remove('show');
+    addModal.classList.remove('show');
     document.getElementById('addTitle').value = '';
     document.getElementById('addDesc').value = '';
+    pendingImages = [];
+    document.getElementById('imgPreview').innerHTML = '';
     updateCounts();
   });
 
@@ -178,8 +290,7 @@ document.addEventListener('DOMContentLoaded', function() {
       else if (c.dataset.severity === 'medium') m++;
       else l++;
     });
-    var total = h + m + l;
-    document.getElementById('countTotal').textContent = total;
+    document.getElementById('countTotal').textContent = h + m + l;
     document.getElementById('countHigh').textContent = h;
     document.getElementById('countMedium').textContent = m;
     document.getElementById('countLow').textContent = l;
@@ -344,9 +455,33 @@ async function generateHtmlReport(data, meta) {
       <input type="text" id="addTitle" placeholder="例如：按钮颜色与设计稿不一致">
       <label>问题描述</label>
       <textarea id="addDesc" placeholder="详细描述问题，可选"></textarea>
+      <label>截图（可选，支持多张，可拖拽）</label>
+      <input type="file" id="imgFileInput" accept="image/*" multiple style="display:none">
+      <div class="img-upload-zone" id="imgUploadZone">点击或拖拽图片到这里</div>
+      <div class="img-preview-row" id="imgPreview"></div>
       <div class="add-actions">
         <button class="btn-cancel" id="addCancel">取消</button>
         <button class="btn-confirm" id="addConfirm">添加</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="add-modal" id="editModal">
+    <div class="add-dialog">
+      <h3>编辑问题</h3>
+      <label>优先级</label>
+      <select id="editSeverity">
+        <option value="high">高 - 影响功能或核心视觉</option>
+        <option value="medium">中 - 影响视觉还原</option>
+        <option value="low">低 - 细节优化</option>
+      </select>
+      <label>问题标题</label>
+      <input type="text" id="editTitle">
+      <label>问题描述</label>
+      <textarea id="editDesc"></textarea>
+      <div class="add-actions">
+        <button class="btn-cancel" id="editCancel">取消</button>
+        <button class="btn-confirm" id="editConfirm">保存</button>
       </div>
     </div>
   </div>
@@ -370,6 +505,7 @@ async function renderIssueCard(issue, index) {
 
   return `
     <div class="issue-card ${severityCls}" data-severity="${issue.severity}" data-type="${issue.type}">
+      <button class="edit-btn" title="编辑">\u270E</button>
       <button class="delete-btn" title="删除此问题">\u00D7</button>
       <button class="restore-btn" style="display:none">恢复</button>
       <div class="issue-header">
