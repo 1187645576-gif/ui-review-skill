@@ -334,11 +334,42 @@ document.addEventListener('DOMContentLoaded', function() {
   document.getElementById('saveReportBtn').addEventListener('click', function() {
     // 移除已删除的问题
     document.querySelectorAll('.issue-card.deleted').forEach(function(c) { c.remove(); });
-    // 移除工具栏和交互按钮
+    // 移除编辑/删除按钮、新增弹窗、编辑弹窗
     var clone = document.documentElement.cloneNode(true);
-    clone.querySelectorAll('.toolbar, .delete-btn, .edit-btn, .restore-btn, .add-modal, #editModal, .save-toast, #saveReportBtn').forEach(function(el) { el.remove(); });
-    // 移除 script
+    clone.querySelectorAll('.delete-btn, .edit-btn, .restore-btn, #addModal, #editModal, .save-toast, #saveReportBtn, .add-btn, #imgFileInput').forEach(function(el) { el.remove(); });
+    // 移除原有 script，注入精简版筛选 JS
     clone.querySelectorAll('script').forEach(function(el) { el.remove(); });
+
+    var filterJS = document.createElement('script');
+    filterJS.textContent = "(function(){" +
+      "var af={severity:'all',type:'all'};" +
+      "document.querySelectorAll('.filter-btn').forEach(function(b){" +
+        "b.addEventListener('click',function(){" +
+          "var g=b.dataset.group,v=b.dataset.value;" +
+          "document.querySelectorAll('.filter-btn[data-group=\"'+g+'\"]').forEach(function(x){x.classList.remove('active')});" +
+          "b.classList.add('active');af[g]=v;" +
+          "document.querySelectorAll('.issue-card').forEach(function(c){" +
+            "var s=true;" +
+            "if(af.severity!=='all'&&c.dataset.severity!==af.severity)s=false;" +
+            "if(af.type!=='all'&&c.dataset.type!==af.type)s=false;" +
+            "c.style.display=s?'':'none';" +
+          "});" +
+          "document.querySelectorAll('.page-group').forEach(function(p){var v=p.querySelectorAll('.issue-card:not([style*=\"display: none\"])');p.style.display=v.length?'':'none'});" +
+          "document.querySelectorAll('.type-section').forEach(function(t){var v=t.querySelectorAll('.issue-card:not([style*=\"display: none\"])');t.style.display=v.length?'':'none'});" +
+          "var cards=document.querySelectorAll('.issue-card:not([style*=\"display: none\"])'),h=0,m=0,l=0;" +
+          "cards.forEach(function(c){if(c.dataset.severity==='high')h++;else if(c.dataset.severity==='medium')m++;else l++});" +
+          "document.getElementById('countTotal').textContent=h+m+l;" +
+          "document.getElementById('countHigh').textContent=h;" +
+          "document.getElementById('countMedium').textContent=m;" +
+          "document.getElementById('countLow').textContent=l;" +
+        "});" +
+      "});" +
+      "var zo=document.getElementById('zoomOverlay'),zi=document.getElementById('zoomImg');" +
+      "document.addEventListener('click',function(e){if(e.target.tagName==='IMG'&&!e.target.closest('.zoom-overlay')){zi.src=e.target.src;zo.classList.add('show')}});" +
+      "zo.addEventListener('click',function(){zo.classList.remove('show')});" +
+      "document.addEventListener('keydown',function(e){if(e.key==='Escape')zo.classList.remove('show')});" +
+    "})();";
+    clone.querySelector('body').appendChild(filterJS);
 
     var html = '<!DOCTYPE html>' + clone.outerHTML;
     var blob = new Blob([html], { type: 'text/html;charset=utf-8' });
@@ -376,6 +407,16 @@ async function generateHtmlReport(data, meta) {
     issuesByType[issue.type].push(issue);
   });
 
+  // 每个类型内按优先级排序：高→中→低
+  const severityRank = { high: 0, medium: 1, low: 2 };
+  Object.values(issuesByType).forEach((list) => {
+    list.sort((a, b) => {
+      const ra = severityRank[a.severity] != null ? severityRank[a.severity] : 9;
+      const rb = severityRank[b.severity] != null ? severityRank[b.severity] : 9;
+      return (ra - rb) || (b.score - a.score);
+    });
+  });
+
   const typeSectionsHtml = [];
   let globalIndex = 0;
 
@@ -396,6 +437,11 @@ async function generateHtmlReport(data, meta) {
       });
 
       for (const [pageName, pageIssues] of Object.entries(byPage)) {
+        pageIssues.sort((a, b) => {
+          const ra = severityRank[a.severity] != null ? severityRank[a.severity] : 9;
+          const rb = severityRank[b.severity] != null ? severityRank[b.severity] : 9;
+          return (ra - rb) || (b.score - a.score);
+        });
         typeSectionsHtml.push(`<div class="page-group"><div class="page-group-title">\uD83D\uDCC4 ${escapeHtml(pageName)}（${pageIssues.length} 个）</div>`);
         for (const issue of pageIssues) {
           globalIndex += 1;
