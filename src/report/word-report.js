@@ -71,12 +71,15 @@ async function generateWordReport(data, meta) {
     const dB64 = await toBase64DataUrl(page.designImage);
     const vB64 = await toBase64DataUrl(page.devImage);
     const hB64 = await toBase64DataUrl(page.heatMapImage);
+    const oB64 = await toBase64DataUrl(page.overlayImage);
     const pageTitle = isMultiPage ? page.pageName || "页面" : "全局视图";
     pageViews.push(`<h3>${escapeHtml(pageTitle)}</h3>
     <table><tr>
       <td><strong>设计稿</strong><br><img class="thumb" src="${dB64}" alt="设计稿"></td>
       <td><strong>开发稿</strong><br><img class="thumb" src="${vB64}" alt="开发稿"></td>
       <td><strong>热力图</strong><br><img class="thumb" src="${hB64}" alt="热力图"></td>
+      <td><strong>重叠对比</strong><br><img class="thumb" src="${oB64}" alt="重叠对比"></td>
+    </tr></table>`);
     </tr></table>`);
   }
 
