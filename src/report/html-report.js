@@ -56,9 +56,13 @@ body { font-family: "Microsoft YaHei","Segoe UI",sans-serif; padding: 32px; colo
 .overview-section > h2 { font-size: 18px; margin-bottom: 16px; padding-bottom: 6px; border-bottom: 2px solid #e5e7eb; }
 .page-overview { margin-bottom: 16px; padding: 12px; border: 1px solid #e5e7eb; border-radius: 10px; background: #fff; }
 .page-overview h3 { font-size: 14px; margin-bottom: 8px; color: #374151; }
-.overview-grid { display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 10px; }
+.overview-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; }
 .overview-item h4 { font-size: 11px; color: #9ca3af; margin-bottom: 4px; }
-.overview-item img { width: 100%; border-radius: 6px; border: 1px solid #e5e7eb; }
+.overview-item img { width: 100%; border-radius: 6px; border: 1px solid #e5e7eb; cursor: pointer; }
+.comparison-row img { max-width: 280px; border-radius: 6px; border: 1px solid #e5e7eb; cursor: pointer; }
+.zoom-overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.75); z-index: 300; align-items: center; justify-content: center; cursor: zoom-out; }
+.zoom-overlay.show { display: flex; }
+.zoom-overlay img { max-width: 90vw; max-height: 90vh; border-radius: 8px; box-shadow: 0 20px 60px rgba(0,0,0,0.4); }
 .footer { margin-top: 32px; padding-top: 12px; border-top: 1px solid #e5e7eb; font-size: 12px; color: #9ca3af; }
 
 .add-modal { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.4); z-index: 100; align-items: center; justify-content: center; }
@@ -314,6 +318,18 @@ document.addEventListener('DOMContentLoaded', function() {
     });
   }
 
+  // 图片放大
+  var zoomOverlay = document.getElementById('zoomOverlay');
+  var zoomImg = document.getElementById('zoomImg');
+  document.addEventListener('click', function(e) {
+    if (e.target.tagName === 'IMG' && !e.target.closest('.add-dialog') && !e.target.closest('.img-preview-item') && !e.target.closest('.zoom-overlay')) {
+      zoomImg.src = e.target.src;
+      zoomOverlay.classList.add('show');
+    }
+  });
+  zoomOverlay.addEventListener('click', function() { zoomOverlay.classList.remove('show'); });
+  document.addEventListener('keydown', function(e) { if (e.key === 'Escape') zoomOverlay.classList.remove('show'); });
+
   // 保存报告
   document.getElementById('saveReportBtn').addEventListener('click', function() {
     // 移除已删除的问题
@@ -400,7 +416,6 @@ async function generateHtmlReport(data, meta) {
   const pageOverviewsHtml = [];
   for (const page of pages) {
     const dB64 = await toBase64DataUrl(page.designImage);
-    const vB64 = await toBase64DataUrl(page.devImage);
     const hB64 = await toBase64DataUrl(page.heatMapImage);
     const oB64 = await toBase64DataUrl(page.overlayImage);
     const pageTitle = isMultiPage ? page.pageName || "页面" : "全局视图";
@@ -410,7 +425,6 @@ async function generateHtmlReport(data, meta) {
         <h3>${escapeHtml(pageTitle)}</h3>
         <div class="overview-grid">
           <div class="overview-item"><h4>设计稿</h4><img src="${dB64}" alt="设计稿"></div>
-          <div class="overview-item"><h4>开发稿</h4><img src="${vB64}" alt="开发稿"></div>
           <div class="overview-item"><h4>热力图</h4><img src="${hB64}" alt="热力图"></div>
           <div class="overview-item"><h4>重叠</h4><img src="${oB64}" alt="重叠"></div>
         </div>
@@ -526,6 +540,8 @@ async function generateHtmlReport(data, meta) {
       </div>
     </div>
   </div>
+
+  <div class="zoom-overlay" id="zoomOverlay"><img id="zoomImg" src="" alt="放大"></div>
 
   <div class="save-toast" id="saveToast">报告已保存</div>
 
