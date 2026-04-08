@@ -131,6 +131,7 @@ document.addEventListener('DOMContentLoaded', function() {
       var eb = card.querySelector('.edit-btn'); if (eb) eb.style.display = 'none';
       var rb = card.querySelector('.restore-btn'); if (rb) rb.style.display = '';
       updateCounts();
+      hideEmptyGroups();
     }
     if (e.target.classList.contains('restore-btn')) {
       var card = e.target.closest('.issue-card');
@@ -139,6 +140,7 @@ document.addEventListener('DOMContentLoaded', function() {
       var db = card.querySelector('.delete-btn'); if (db) db.style.display = '';
       var eb = card.querySelector('.edit-btn'); if (eb) eb.style.display = '';
       updateCounts();
+      hideEmptyGroups();
     }
     if (e.target.classList.contains('edit-btn')) {
       openEditModal(e.target.closest('.issue-card'));
@@ -300,6 +302,17 @@ document.addEventListener('DOMContentLoaded', function() {
   }
 
   function escapeH(s) { var d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+
+  function hideEmptyGroups() {
+    document.querySelectorAll('.page-group').forEach(function(pg) {
+      var alive = pg.querySelectorAll('.issue-card:not(.deleted)');
+      pg.style.display = alive.length ? '' : 'none';
+    });
+    document.querySelectorAll('.type-section').forEach(function(ts) {
+      var alive = ts.querySelectorAll('.issue-card:not(.deleted)');
+      ts.style.display = alive.length ? '' : 'none';
+    });
+  }
 
   // 保存报告
   document.getElementById('saveReportBtn').addEventListener('click', function() {

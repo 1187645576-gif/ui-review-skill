@@ -173,6 +173,31 @@ async function runBatchReview(options) {
     pages.push(result);
   }
 
+  // 跨页面去重：相同类型 + 相似位置 + 相似差异强度的问题只保留一个
+  if (pages.length > 1) {
+    const seen = [];
+    for (const page of pages) {
+      page.issues = page.issues.filter((issue) => {
+        const dup = seen.find((s) =>
+          s.type === issue.type &&
+          Math.abs(s.bbox.x - issue.bbox.x) < 40 &&
+          Math.abs(s.bbox.y - issue.bbox.y) < 40 &&
+          Math.abs(s.bbox.w - issue.bbox.w) < 40 &&
+          Math.abs(s.bbox.h - issue.bbox.h) < 40 &&
+          Math.abs(s.score - issue.score) < 0.15
+        );
+        if (dup) return false;
+        seen.push(issue);
+        return true;
+      });
+    }
+    const deduped = pages.reduce((sum, p) => sum + p.issues.length, 0);
+    const removed = seen.length === deduped ? 0 : seen.length - deduped;
+    if (seen.length < pages.reduce((s, p) => s + p.issues.length, 0) + removed) {
+      console.log(`[去重] 移除了跨页面重复问题，剩余 ${deduped} 个`);
+    }
+  }
+
   console.log("[合并] 生成合并报告...");
   const reportMeta = {
     pageName: meta.pageName || "UI 走查报告",
