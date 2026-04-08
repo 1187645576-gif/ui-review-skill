@@ -80,7 +80,6 @@ async function generateWordReport(data, meta) {
       <td><strong>热力图</strong><br><img class="thumb" src="${hB64}" alt="热力图"></td>
       <td><strong>重叠对比</strong><br><img class="thumb" src="${oB64}" alt="重叠对比"></td>
     </tr></table>`);
-    </tr></table>`);
   }
 
   const html = `<!DOCTYPE html>
