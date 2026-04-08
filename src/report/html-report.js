@@ -80,6 +80,9 @@ body { font-family: "Microsoft YaHei","Segoe UI",sans-serif; padding: 32px; colo
 .add-actions button { padding: 8px 20px; border-radius: 8px; border: none; font-size: 14px; cursor: pointer; }
 .btn-cancel { background: #f3f4f6; color: #374151; }
 .btn-confirm { background: #1a1a2e; color: #fff; }
+.save-btn { padding: 4px 14px; border-radius: 999px; border: 1px solid #6366f1; background: #eef2ff; color: #4f46e5; font-size: 13px; cursor: pointer; font-weight: 600; }
+.save-btn:hover { background: #e0e7ff; }
+.save-toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); background: #1a1a2e; color: #fff; padding: 10px 24px; border-radius: 10px; font-size: 14px; z-index: 200; display: none; box-shadow: 0 8px 24px rgba(0,0,0,0.2); }
 
 @media print { .toolbar, .delete-btn, .restore-btn, .add-btn, .edit-btn { display: none !important; } body { padding: 16px; } .page-overview { break-inside: avoid; } .issue-card { break-inside: avoid; } .issue-card.deleted { display: none !important; } }
 `;
@@ -297,6 +300,30 @@ document.addEventListener('DOMContentLoaded', function() {
   }
 
   function escapeH(s) { var d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+
+  // 保存报告
+  document.getElementById('saveReportBtn').addEventListener('click', function() {
+    // 移除已删除的问题
+    document.querySelectorAll('.issue-card.deleted').forEach(function(c) { c.remove(); });
+    // 移除工具栏和交互按钮
+    var clone = document.documentElement.cloneNode(true);
+    clone.querySelectorAll('.toolbar, .delete-btn, .edit-btn, .restore-btn, .add-modal, #editModal, .save-toast, #saveReportBtn').forEach(function(el) { el.remove(); });
+    // 移除 script
+    clone.querySelectorAll('script').forEach(function(el) { el.remove(); });
+
+    var html = '<!DOCTYPE html>' + clone.outerHTML;
+    var blob = new Blob([html], { type: 'text/html;charset=utf-8' });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url;
+    a.download = 'UI\\u8D70\\u67E5\\u62A5\\u544A-\\u7EC8\\u7A3F.html';
+    a.click();
+    URL.revokeObjectURL(url);
+
+    var toast = document.getElementById('saveToast');
+    toast.style.display = 'block';
+    setTimeout(function() { toast.style.display = 'none'; }, 2000);
+  });
 });
 `;
 
@@ -424,6 +451,7 @@ async function generateHtmlReport(data, meta) {
     <button class="filter-btn" data-group="type" data-value="layout">布局</button>
     <span class="toolbar-sep"></span>
     <button class="add-btn" id="addIssueBtn">+ 新增问题</button>
+    <button class="save-btn" id="saveReportBtn">保存当前报告</button>
   </div>
 
   ${typeSectionsHtml.join("\n")}
@@ -485,6 +513,8 @@ async function generateHtmlReport(data, meta) {
       </div>
     </div>
   </div>
+
+  <div class="save-toast" id="saveToast">报告已保存</div>
 
   <footer class="footer">
     <p>由 AI UI 走查助手 v2.3.0 自动生成 | ${escapeHtml(timestamp)}</p>
