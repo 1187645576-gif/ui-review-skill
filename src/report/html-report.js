@@ -346,7 +346,7 @@ document.addEventListener('DOMContentLoaded', function() {
       "document.querySelectorAll('.filter-btn').forEach(function(b){" +
         "b.addEventListener('click',function(){" +
           "var g=b.dataset.group,v=b.dataset.value;" +
-          "document.querySelectorAll('.filter-btn[data-group=\"'+g+'\"]').forEach(function(x){x.classList.remove('active')});" +
+          "document.querySelectorAll('.filter-btn[data-group=\\x22'+g+'\\x22]').forEach(function(x){x.classList.remove('active')});" +
           "b.classList.add('active');af[g]=v;" +
           "document.querySelectorAll('.issue-card').forEach(function(c){" +
             "var s=true;" +
@@ -354,9 +354,9 @@ document.addEventListener('DOMContentLoaded', function() {
             "if(af.type!=='all'&&c.dataset.type!==af.type)s=false;" +
             "c.style.display=s?'':'none';" +
           "});" +
-          "document.querySelectorAll('.page-group').forEach(function(p){var v=p.querySelectorAll('.issue-card:not([style*=\"display: none\"])');p.style.display=v.length?'':'none'});" +
-          "document.querySelectorAll('.type-section').forEach(function(t){var v=t.querySelectorAll('.issue-card:not([style*=\"display: none\"])');t.style.display=v.length?'':'none'});" +
-          "var cards=document.querySelectorAll('.issue-card:not([style*=\"display: none\"])'),h=0,m=0,l=0;" +
+          "document.querySelectorAll('.page-group').forEach(function(p){var v=p.querySelectorAll('.issue-card:not([style*=\\x22display: none\\x22])');p.style.display=v.length?'':'none'});" +
+          "document.querySelectorAll('.type-section').forEach(function(t){var v=t.querySelectorAll('.issue-card:not([style*=\\x22display: none\\x22])');t.style.display=v.length?'':'none'});" +
+          "var cards=document.querySelectorAll('.issue-card:not([style*=\\x22display: none\\x22])'),h=0,m=0,l=0;" +
           "cards.forEach(function(c){if(c.dataset.severity==='high')h++;else if(c.dataset.severity==='medium')m++;else l++});" +
           "document.getElementById('countTotal').textContent=h+m+l;" +
           "document.getElementById('countHigh').textContent=h;" +
